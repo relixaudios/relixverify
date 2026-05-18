@@ -169,6 +169,19 @@
       font-size: 12px;
       overflow-wrap: anywhere;
     }
+
+    .page-link {
+      display: inline-flex;
+      margin-top: 16px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .page-link:hover {
+      color: var(--green);
+    }
   </style>
 </head>
 <body>
@@ -198,6 +211,7 @@
       <button type="button" data-api-target="localhost">Localhost</button>
     </div>
     <p class="endpoint" id="endpoint"></p>
+    <a class="page-link" href="./verification.html">Open public verification page</a>
   </main>
 
   <script src="./config.js"></script>
