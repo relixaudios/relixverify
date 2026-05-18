@@ -12,6 +12,10 @@ window.RELIX_VERIFY_CONFIG = {
     localhost: {
       label: "Localhost",
       apiUrl: "http://localhost:14254/api/oauth/callback"
+    },
+    loopback: {
+      label: "127.0.0.1",
+      apiUrl: "http://127.0.0.1:14254/api/oauth/callback"
     }
   },
   discordUrl: "https://discord.gg/s5qHTezSMU"

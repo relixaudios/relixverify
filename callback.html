@@ -230,42 +230,86 @@
       return Boolean(apiUrl && !apiUrl.includes("YOUR-"));
     }
 
-    function resolveApiEndpoint(params) {
+    function resolveApiEndpoints(params) {
       const targets = config.apiTargets || {};
       const candidates = [
         normalizeApiTarget(params.get("api")),
         normalizeApiTarget(params.get("target")),
         normalizeApiTarget(readSavedApiTarget()),
         normalizeApiTarget(config.defaultApiTarget),
+        "proxy",
         "server",
-        "localhost"
+        "localhost",
+        "loopback"
       ];
+      const endpoints = [];
+      const seen = new Set();
 
       for (const candidate of candidates) {
         const endpoint = targets[candidate];
         const apiUrl = typeof endpoint === "string" ? endpoint : endpoint && endpoint.apiUrl;
-        if (isConfiguredApiUrl(apiUrl)) {
-          return {
+        if (isConfiguredApiUrl(apiUrl) && !seen.has(apiUrl)) {
+          seen.add(apiUrl);
+          endpoints.push({
             name: candidate,
             label: endpoint.label || candidate,
             url: apiUrl
-          };
+          });
         }
       }
 
-      if (isConfiguredApiUrl(config.apiUrl)) {
-        return {
+      if (isConfiguredApiUrl(config.apiUrl) && !seen.has(config.apiUrl)) {
+        endpoints.push({
           name: "legacy",
           label: "API",
           url: config.apiUrl
-        };
+        });
       }
 
-      return {
-        name: "",
-        label: "",
-        url: ""
-      };
+      return endpoints;
+    }
+
+    function isRetryableVerificationFailure(error, response, payload) {
+      if (error) {
+        return true;
+      }
+
+      const status = response && response.status;
+      const message = text(payload && payload.message, "").toLowerCase();
+
+      if ([408, 502, 503, 504].includes(status)) {
+        return true;
+      }
+
+      if (status === 403 && (!message || message.includes("origin") || message.includes("forbidden"))) {
+        return true;
+      }
+
+      if (status === 500 && (message.includes("backend") || message.includes("not reachable") || message.includes("returned"))) {
+        return true;
+      }
+
+      return false;
+    }
+
+    async function fetchVerification(endpoint, code, state) {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+
+      try {
+        const response = await fetch(endpoint.url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ code, state }),
+          signal: controller.signal
+        });
+        const payload = await response.json().catch(() => ({}));
+        return { response, payload };
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
     }
 
     function renderError(message) {
@@ -329,11 +373,11 @@
       const code = params.get("code");
       const state = params.get("state");
       const error = params.get("error");
-      const apiEndpoint = resolveApiEndpoint(params);
+      const apiEndpoints = resolveApiEndpoints(params);
 
       cleanUrl();
 
-      if (!apiEndpoint.url || apiEndpoint.url.includes("YOUR-")) {
+      if (!apiEndpoints.length) {
         renderError("Verification endpoint is not configured.");
         return;
       }
@@ -348,24 +392,40 @@
         return;
       }
 
-      try {
-        const response = await fetch(apiEndpoint.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ code, state })
-        });
-        const payload = await response.json().catch(() => ({}));
+      let lastErrorMessage = "Verification endpoint is not reachable.";
 
-        if (!response.ok || !payload.ok) {
-          throw new Error(payload.message || "Verification could not be completed.");
+      for (const endpoint of apiEndpoints) {
+        try {
+          const { response, payload } = await fetchVerification(endpoint, code, state);
+
+          if (response.ok && payload.ok) {
+            renderSuccess(payload);
+            return;
+          }
+
+          lastErrorMessage = payload.message || `Verification failed through ${endpoint.label}.`;
+
+          if (isRetryableVerificationFailure(null, response, payload)) {
+            continue;
+          }
+
+          renderError(lastErrorMessage);
+          return;
+        } catch (err) {
+          lastErrorMessage = err.name === "AbortError"
+            ? `${endpoint.label} timed out.`
+            : text(err.message, `${endpoint.label} is not reachable.`);
+
+          if (isRetryableVerificationFailure(err)) {
+            continue;
+          }
+
+          renderError(lastErrorMessage);
+          return;
         }
-
-        renderSuccess(payload);
-      } catch (err) {
-        renderError(err.message);
       }
+
+      renderError(lastErrorMessage);
     }
 
     completeVerification();
