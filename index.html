@@ -93,7 +93,7 @@
 
     .api-switch {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 8px;
       margin-top: 18px;
     }
@@ -115,6 +115,11 @@
       background: rgba(88, 101, 242, 0.18);
     }
 
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.52;
+    }
+
     .endpoint {
       margin-top: 10px;
       font-size: 12px;
@@ -132,6 +137,7 @@
       Ready
     </div>
     <div class="api-switch" aria-label="API target">
+      <button type="button" data-api-target="proxy">Proxy</button>
       <button type="button" data-api-target="server">Server</button>
       <button type="button" data-api-target="localhost">Localhost</button>
     </div>
@@ -147,6 +153,10 @@
 
     function getTargets() {
       return config.apiTargets || {};
+    }
+
+    function isConfiguredApiUrl(apiUrl) {
+      return Boolean(apiUrl && !apiUrl.includes("YOUR-"));
     }
 
     function getStoredTarget() {
@@ -167,10 +177,16 @@
 
     function renderTarget(target) {
       const targets = getTargets();
-      const selected = targets[target] ? target : config.defaultApiTarget || "server";
+      const fallbackTargets = [target, config.defaultApiTarget, "proxy", "server", "localhost"];
+      const selected = fallbackTargets.find((candidate) => {
+        const targetConfig = targets[candidate] || {};
+        return isConfiguredApiUrl(targetConfig.apiUrl);
+      }) || "server";
       const targetConfig = targets[selected] || {};
 
       buttons.forEach((button) => {
+        const buttonConfig = targets[button.dataset.apiTarget] || {};
+        button.disabled = !isConfiguredApiUrl(buttonConfig.apiUrl);
         button.classList.toggle("active", button.dataset.apiTarget === selected);
       });
 

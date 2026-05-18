@@ -1,0 +1,7 @@
+name = "relixverify-proxy"
+main = "cloudflare-worker.js"
+compatibility_date = "2026-05-18"
+
+[vars]
+BACKEND_ORIGIN = "http://217.160.125.128:14254"
+ALLOWED_ORIGINS = "https://relixaudios.github.io,http://localhost:14254,http://127.0.0.1:14254,http://localhost:8080,http://127.0.0.1:8080"

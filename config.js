@@ -1,6 +1,10 @@
 window.RELIX_VERIFY_CONFIG = {
-  defaultApiTarget: "server",
+  defaultApiTarget: "proxy",
   apiTargets: {
+    proxy: {
+      label: "Proxy",
+      apiUrl: "https://relixverify-proxy.relixaudios.workers.dev/api/oauth/callback"
+    },
     server: {
       label: "Server",
       apiUrl: "http://217.160.125.128:14254/api/oauth/callback"
