@@ -107,7 +107,7 @@ export default {
     if (!contentType.toLowerCase().includes("application/json")) {
       return jsonResponse(
         { ok: false, message: `Verification backend returned ${backendResponse.status}.` },
-        backendResponse.status || 502,
+        502,
         origin,
         env
       );

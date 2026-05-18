@@ -240,7 +240,9 @@
         "proxy",
         "server",
         "localhost",
-        "loopback"
+        "loopback",
+        "localhost14254",
+        "loopback14254"
       ];
       const endpoints = [];
       const seen = new Set();
@@ -281,11 +283,11 @@
         return true;
       }
 
-      if (status === 403 && (!message || message.includes("origin") || message.includes("forbidden"))) {
+      if (message.includes("backend") || message.includes("not reachable") || message.includes("returned")) {
         return true;
       }
 
-      if (status === 500 && (message.includes("backend") || message.includes("not reachable") || message.includes("returned"))) {
+      if (status === 403 && (!message || message.includes("origin") || message.includes("forbidden"))) {
         return true;
       }
 
