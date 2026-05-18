@@ -14,6 +14,7 @@
       --muted: #9ca6b6;
       --blue: #5865f2;
       --green: #33c27f;
+      --red: #f25555;
     }
 
     * {
@@ -71,6 +72,34 @@
       font-size: 15px;
     }
 
+    label {
+      display: block;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    input {
+      width: 100%;
+      min-height: 44px;
+      margin-top: 8px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #14161b;
+      color: var(--text);
+      font: inherit;
+      font-size: 15px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.18);
+    }
+
     .status {
       display: flex;
       align-items: center;
@@ -120,6 +149,21 @@
       opacity: 0.52;
     }
 
+    .primary-button {
+      width: 100%;
+      margin-top: 14px;
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .error {
+      min-height: 20px;
+      margin-top: 10px;
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
     .endpoint {
       margin-top: 10px;
       font-size: 12px;
@@ -128,7 +172,19 @@
   </style>
 </head>
 <body>
-  <main>
+  <main id="login-panel">
+    <div class="mark">RA</div>
+    <h1>Admin Access</h1>
+    <p>Enter the admin password to manage Relix Audios verification.</p>
+    <form id="admin-login">
+      <label for="admin-password">Password</label>
+      <input id="admin-password" type="password" autocomplete="current-password" autofocus>
+      <button class="primary-button" type="submit">Unlock</button>
+      <p class="error" id="auth-error" aria-live="polite"></p>
+    </form>
+  </main>
+
+  <main id="admin-panel" hidden>
     <div class="mark">RA</div>
     <h1>Relix Audios Verification</h1>
     <p>Secure Discord verification is active for Relix Audios.</p>
@@ -147,7 +203,14 @@
   <script src="./config.js"></script>
   <script>
     const config = window.RELIX_VERIFY_CONFIG || {};
+    const adminPassword = "ruhi123";
+    const adminAuthKey = "relixVerifyAdminUnlocked";
     const storageKey = "relixVerifyApiTarget";
+    const loginPanel = document.getElementById("login-panel");
+    const adminPanel = document.getElementById("admin-panel");
+    const loginForm = document.getElementById("admin-login");
+    const passwordInput = document.getElementById("admin-password");
+    const authError = document.getElementById("auth-error");
     const buttons = Array.from(document.querySelectorAll("[data-api-target]"));
     const endpoint = document.getElementById("endpoint");
 
@@ -175,6 +238,27 @@
       }
     }
 
+    function isAdminUnlocked() {
+      try {
+        return window.sessionStorage.getItem(adminAuthKey) === "1";
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function storeAdminUnlock() {
+      try {
+        window.sessionStorage.setItem(adminAuthKey, "1");
+      } catch (err) {
+        return;
+      }
+    }
+
+    function showAdminPanel() {
+      loginPanel.hidden = true;
+      adminPanel.hidden = false;
+    }
+
     function renderTarget(target) {
       const targets = getTargets();
       const fallbackTargets = [target, config.defaultApiTarget, "proxy", "server", "localhost"];
@@ -195,6 +279,25 @@
 
     const initialTarget = getStoredTarget() || config.defaultApiTarget || "server";
     renderTarget(initialTarget);
+
+    if (isAdminUnlocked()) {
+      showAdminPanel();
+    }
+
+    loginForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      if (passwordInput.value === adminPassword) {
+        storeAdminUnlock();
+        authError.textContent = "";
+        passwordInput.value = "";
+        showAdminPanel();
+        return;
+      }
+
+      authError.textContent = "Wrong password.";
+      passwordInput.select();
+    });
 
     buttons.forEach((button) => {
       button.addEventListener("click", () => {
