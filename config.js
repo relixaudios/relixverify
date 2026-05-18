@@ -3,7 +3,7 @@ window.RELIX_VERIFY_CONFIG = {
   apiTargets: {
     proxy: {
       label: "Proxy",
-      apiUrl: "https://relixverify-proxy.relixaudios.workers.dev/api/oauth/callback"
+      apiUrl: "https://relixverify.mynamesreyli.workers.dev/api/oauth/callback"
     },
     server: {
       label: "Server",

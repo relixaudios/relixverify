@@ -1,6 +1,8 @@
-name = "relixverify-proxy"
+name = "relixverify"
 main = "cloudflare-worker.js"
 compatibility_date = "2026-05-18"
+workers_dev = true
+preview_urls = true
 
 [vars]
 BACKEND_ORIGIN = "http://217.160.125.128:14254"

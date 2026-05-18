@@ -85,12 +85,33 @@ export default {
       "Content-Type": request.headers.get("Content-Type") || "application/json"
     });
 
-    const backendResponse = await fetch(backendUrl, {
-      method: "POST",
-      headers,
-      body: request.body,
-      redirect: "manual"
-    });
+    let backendResponse;
+
+    try {
+      backendResponse = await fetch(backendUrl, {
+        method: "POST",
+        headers,
+        body: request.body,
+        redirect: "manual"
+      });
+    } catch (err) {
+      return jsonResponse(
+        { ok: false, message: "Verification backend is not reachable." },
+        502,
+        origin,
+        env
+      );
+    }
+
+    const contentType = backendResponse.headers.get("Content-Type") || "";
+    if (!contentType.toLowerCase().includes("application/json")) {
+      return jsonResponse(
+        { ok: false, message: `Verification backend returned ${backendResponse.status}.` },
+        backendResponse.status || 502,
+        origin,
+        env
+      );
+    }
 
     const responseHeaders = new Headers(backendResponse.headers);
     responseHeaders.delete("Set-Cookie");
