@@ -170,6 +170,7 @@
   <script>
     const config = window.RELIX_VERIFY_CONFIG || {};
     const app = document.getElementById("app");
+    const apiTargetStorageKey = "relixVerifyApiTarget";
 
     function cleanUrl() {
       if (window.history && window.history.replaceState) {
@@ -203,6 +204,63 @@
       }
 
       return fallback;
+    }
+
+    function readSavedApiTarget() {
+      try {
+        return window.localStorage.getItem(apiTargetStorageKey);
+      } catch (err) {
+        return "";
+      }
+    }
+
+    function normalizeApiTarget(value) {
+      const target = text(value, "").trim().toLowerCase();
+      if (target === "local") {
+        return "localhost";
+      }
+      if (target === "remote") {
+        return "server";
+      }
+      return target;
+    }
+
+    function resolveApiEndpoint(params) {
+      const targets = config.apiTargets || {};
+      const candidates = [
+        normalizeApiTarget(params.get("api")),
+        normalizeApiTarget(params.get("target")),
+        normalizeApiTarget(readSavedApiTarget()),
+        normalizeApiTarget(config.defaultApiTarget),
+        "server",
+        "localhost"
+      ];
+
+      for (const candidate of candidates) {
+        const endpoint = targets[candidate];
+        const apiUrl = typeof endpoint === "string" ? endpoint : endpoint && endpoint.apiUrl;
+        if (apiUrl) {
+          return {
+            name: candidate,
+            label: endpoint.label || candidate,
+            url: apiUrl
+          };
+        }
+      }
+
+      if (config.apiUrl) {
+        return {
+          name: "legacy",
+          label: "API",
+          url: config.apiUrl
+        };
+      }
+
+      return {
+        name: "",
+        label: "",
+        url: ""
+      };
     }
 
     function renderError(message) {
@@ -266,10 +324,11 @@
       const code = params.get("code");
       const state = params.get("state");
       const error = params.get("error");
+      const apiEndpoint = resolveApiEndpoint(params);
 
       cleanUrl();
 
-      if (!config.apiUrl || config.apiUrl.includes("YOUR-RAILWAY-DOMAIN")) {
+      if (!apiEndpoint.url || apiEndpoint.url.includes("YOUR-")) {
         renderError("Verification endpoint is not configured.");
         return;
       }
@@ -285,7 +344,7 @@
       }
 
       try {
-        const response = await fetch(config.apiUrl, {
+        const response = await fetch(apiEndpoint.url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"

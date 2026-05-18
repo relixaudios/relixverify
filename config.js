@@ -1,4 +1,14 @@
 window.RELIX_VERIFY_CONFIG = {
-  apiUrl: "https://YOUR-RAILWAY-DOMAIN.up.railway.app/api/oauth/callback",
+  defaultApiTarget: "server",
+  apiTargets: {
+    server: {
+      label: "Server",
+      apiUrl: "http://217.160.125.128:14254/api/oauth/callback"
+    },
+    localhost: {
+      label: "Localhost",
+      apiUrl: "http://localhost:14254/api/oauth/callback"
+    }
+  },
   discordUrl: "https://discord.gg/s5qHTezSMU"
 };

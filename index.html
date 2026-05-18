@@ -90,6 +90,36 @@
       background: var(--green);
       box-shadow: 0 0 18px rgba(51, 194, 127, 0.7);
     }
+
+    .api-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    button {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #14161b;
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button.active {
+      border-color: var(--blue);
+      background: rgba(88, 101, 242, 0.18);
+    }
+
+    .endpoint {
+      margin-top: 10px;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
   </style>
 </head>
 <body>
@@ -101,6 +131,62 @@
       <span class="dot" aria-hidden="true"></span>
       Ready
     </div>
+    <div class="api-switch" aria-label="API target">
+      <button type="button" data-api-target="server">Server</button>
+      <button type="button" data-api-target="localhost">Localhost</button>
+    </div>
+    <p class="endpoint" id="endpoint"></p>
   </main>
+
+  <script src="./config.js"></script>
+  <script>
+    const config = window.RELIX_VERIFY_CONFIG || {};
+    const storageKey = "relixVerifyApiTarget";
+    const buttons = Array.from(document.querySelectorAll("[data-api-target]"));
+    const endpoint = document.getElementById("endpoint");
+
+    function getTargets() {
+      return config.apiTargets || {};
+    }
+
+    function getStoredTarget() {
+      try {
+        return window.localStorage.getItem(storageKey);
+      } catch (err) {
+        return "";
+      }
+    }
+
+    function setStoredTarget(target) {
+      try {
+        window.localStorage.setItem(storageKey, target);
+      } catch (err) {
+        return;
+      }
+    }
+
+    function renderTarget(target) {
+      const targets = getTargets();
+      const selected = targets[target] ? target : config.defaultApiTarget || "server";
+      const targetConfig = targets[selected] || {};
+
+      buttons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.apiTarget === selected);
+      });
+
+      endpoint.textContent = targetConfig.apiUrl || "";
+    }
+
+    const initialTarget = getStoredTarget() || config.defaultApiTarget || "server";
+    renderTarget(initialTarget);
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const target = button.dataset.apiTarget;
+        setStoredTarget(target);
+        renderTarget(target);
+      });
+    });
+  </script>
 </body>
 </html>
