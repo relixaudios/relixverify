@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Relix Audios Verification</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101113;
+      --panel: #1b1d22;
+      --line: #30343d;
+      --text: #f4f7fb;
+      --muted: #9ca6b6;
+      --blue: #5865f2;
+      --green: #33c27f;
+      --red: #f25555;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        linear-gradient(135deg, rgba(88, 101, 242, 0.16), transparent 38%),
+        linear-gradient(315deg, rgba(51, 194, 127, 0.12), transparent 34%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    main {
+      width: min(100%, 460px);
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(27, 29, 34, 0.94);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .avatar,
+    .spinner,
+    .badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 8px;
+      flex: 0 0 auto;
+    }
+
+    .spinner {
+      border: 3px solid rgba(156, 166, 182, 0.25);
+      border-top-color: var(--blue);
+      animation: spin 0.9s linear infinite;
+    }
+
+    .badge {
+      display: grid;
+      place-items: center;
+      background: rgba(51, 194, 127, 0.12);
+      border: 1px solid rgba(51, 194, 127, 0.45);
+      color: var(--green);
+      font-weight: 900;
+      font-size: 28px;
+    }
+
+    .badge.error {
+      background: rgba(242, 85, 85, 0.12);
+      border-color: rgba(242, 85, 85, 0.45);
+      color: var(--red);
+    }
+
+    .avatar {
+      object-fit: cover;
+      background: #252831;
+      border: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
+      font-weight: 800;
+    }
+
+    p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    dl {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 22px 0 0;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    dt {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    dd {
+      margin: 4px 0 0;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .actions {
+      display: flex;
+      margin-top: 24px;
+    }
+
+    a {
+      width: 100%;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 6px;
+      background: var(--blue);
+      color: white;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="app">
+    <div class="topline">
+      <div class="spinner" aria-hidden="true"></div>
+      <div>
+        <h1>Verifying account</h1>
+        <p>Please keep this page open.</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="./config.js"></script>
+  <script>
+    const config = window.RELIX_VERIFY_CONFIG || {};
+    const app = document.getElementById("app");
+
+    function cleanUrl() {
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, document.title, window.location.pathname);
+      }
+    }
+
+    function text(value, fallback) {
+      return value ? String(value) : fallback;
+    }
+
+    function escapeHtml(value) {
+      return text(value, "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      })[char]);
+    }
+
+    function safeUrl(value, fallback) {
+      const rawValue = text(value, fallback);
+      try {
+        const url = new URL(rawValue, window.location.href);
+        if (url.protocol === "https:" || url.protocol === "http:") {
+          return url.href;
+        }
+      } catch (err) {
+        return fallback;
+      }
+
+      return fallback;
+    }
+
+    function renderError(message) {
+      const returnUrl = safeUrl(config.discordUrl, "https://discord.gg/s5qHTezSMU");
+      app.innerHTML = `
+        <div class="topline">
+          <div class="badge error" aria-hidden="true">!</div>
+          <div>
+            <h1>Verification failed</h1>
+            <p>${escapeHtml(text(message, "Please try the verification link again."))}</p>
+          </div>
+        </div>
+        <div class="actions">
+          <a href="${returnUrl}">Return to Discord</a>
+        </div>
+      `;
+    }
+
+    function renderSuccess(payload) {
+      const user = payload.user || {};
+      const avatar = safeUrl(user.avatar_url, "");
+      const returnUrl = safeUrl(payload.return_url, safeUrl(config.discordUrl, "https://discord.gg/s5qHTezSMU"));
+      app.innerHTML = `
+        <div class="topline">
+          ${avatar ? `<img class="avatar" alt="" src="${avatar}">` : `<div class="badge" aria-hidden="true">OK</div>`}
+          <div>
+            <h1>Verification complete</h1>
+            <p>${escapeHtml(text(user.display_name, "Your account"))} is now verified.</p>
+          </div>
+        </div>
+        <dl>
+          <div>
+            <dt>Username</dt>
+            <dd>@${escapeHtml(text(user.username, "Unknown"))}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>Verified</dd>
+          </div>
+          <div>
+            <dt>Joined</dt>
+            <dd>${escapeHtml(text(user.joined_at, "Unknown"))}</dd>
+          </div>
+          <div>
+            <dt>Created</dt>
+            <dd>${escapeHtml(text(user.created_at, "Unknown"))}</dd>
+          </div>
+        </dl>
+        <div class="actions">
+          <a href="${returnUrl}">Return to Discord</a>
+        </div>
+      `;
+
+      window.setTimeout(() => {
+        window.location.replace(returnUrl);
+      }, 6000);
+    }
+
+    async function completeVerification() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const state = params.get("state");
+      const error = params.get("error");
+
+      cleanUrl();
+
+      if (!config.apiUrl || config.apiUrl.includes("YOUR-RAILWAY-DOMAIN")) {
+        renderError("Verification endpoint is not configured.");
+        return;
+      }
+
+      if (error) {
+        renderError("Authorization was denied.");
+        return;
+      }
+
+      if (!code || !state) {
+        renderError("Missing OAuth response.");
+        return;
+      }
+
+      try {
+        const response = await fetch(config.apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ code, state })
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.message || "Verification could not be completed.");
+        }
+
+        renderSuccess(payload);
+      } catch (err) {
+        renderError(err.message);
+      }
+    }
+
+    completeVerification();
+  </script>
+</body>
+</html>
