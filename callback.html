@@ -171,7 +171,8 @@
   <script>
     const config = window.RELIX_VERIFY_CONFIG || {};
     const app = document.getElementById("app");
-    const apiTargetStorageKey = "relixVerifyApiTarget";
+    const requiredApiOrigin = "http://217.160.125.128:14254";
+    const requiredApiPath = "/api/oauth/callback";
 
     function cleanUrl() {
       if (window.history && window.history.replaceState) {
@@ -207,68 +208,30 @@
       return fallback;
     }
 
-    function readSavedApiTarget() {
-      try {
-        return window.localStorage.getItem(apiTargetStorageKey);
-      } catch (err) {
-        return "";
-      }
-    }
-
-    function normalizeApiTarget(value) {
-      const target = text(value, "").trim().toLowerCase();
-      if (target === "local") {
-        return "localhost";
-      }
-      if (target === "remote") {
-        return "server";
-      }
-      return target;
-    }
-
     function isConfiguredApiUrl(apiUrl) {
-      return Boolean(apiUrl && !apiUrl.includes("YOUR-"));
+      try {
+        const url = new URL(apiUrl);
+        return url.origin === requiredApiOrigin && url.pathname === requiredApiPath;
+      } catch (err) {
+        return false;
+      }
     }
 
-    function resolveApiEndpoints(params) {
+    function resolveApiEndpoints() {
       const targets = config.apiTargets || {};
-      const candidates = [
-        normalizeApiTarget(params.get("api")),
-        normalizeApiTarget(params.get("target")),
-        normalizeApiTarget(readSavedApiTarget()),
-        normalizeApiTarget(config.defaultApiTarget),
-        "proxy",
-        "server",
-        "localhost",
-        "loopback",
-        "localhost14254",
-        "loopback14254"
-      ];
-      const endpoints = [];
-      const seen = new Set();
+      const endpoint = targets.server || {};
+      const apiUrl = typeof endpoint === "string" ? endpoint : endpoint && endpoint.apiUrl;
+      const configuredApiUrl = isConfiguredApiUrl(apiUrl) ? apiUrl : config.apiUrl;
 
-      for (const candidate of candidates) {
-        const endpoint = targets[candidate];
-        const apiUrl = typeof endpoint === "string" ? endpoint : endpoint && endpoint.apiUrl;
-        if (isConfiguredApiUrl(apiUrl) && !seen.has(apiUrl)) {
-          seen.add(apiUrl);
-          endpoints.push({
-            name: candidate,
-            label: endpoint.label || candidate,
-            url: apiUrl
-          });
-        }
+      if (!isConfiguredApiUrl(configuredApiUrl)) {
+        return [];
       }
 
-      if (isConfiguredApiUrl(config.apiUrl) && !seen.has(config.apiUrl)) {
-        endpoints.push({
-          name: "legacy",
-          label: "API",
-          url: config.apiUrl
-        });
-      }
-
-      return endpoints;
+      return [{
+        name: "server",
+        label: endpoint.label || "Server",
+        url: configuredApiUrl
+      }];
     }
 
     function isRetryableVerificationFailure(error, response, payload) {
@@ -375,7 +338,7 @@
       const code = params.get("code");
       const state = params.get("state");
       const error = params.get("error");
-      const apiEndpoints = resolveApiEndpoints(params);
+      const apiEndpoints = resolveApiEndpoints();
 
       cleanUrl();
 

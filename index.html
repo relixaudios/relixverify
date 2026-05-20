@@ -207,9 +207,7 @@
       Ready
     </div>
     <div class="api-switch" aria-label="API target">
-      <button type="button" data-api-target="proxy">Proxy</button>
       <button type="button" data-api-target="server">Server</button>
-      <button type="button" data-api-target="localhost">Localhost</button>
     </div>
     <p class="endpoint" id="endpoint"></p>
     <a class="page-link" href="./verification.html">Open public verification page</a>
@@ -276,7 +274,7 @@
 
     function renderTarget(target) {
       const targets = getTargets();
-      const fallbackTargets = [target, config.defaultApiTarget, "proxy", "server", "localhost"];
+      const fallbackTargets = [target, config.defaultApiTarget, "server"];
       const selected = fallbackTargets.find((candidate) => {
         const targetConfig = targets[candidate] || {};
         return isConfiguredApiUrl(targetConfig.apiUrl);
