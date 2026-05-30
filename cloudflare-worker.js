@@ -84,6 +84,9 @@ export default {
       "Accept": "application/json",
       "Content-Type": request.headers.get("Content-Type") || "application/json"
     });
+    if (origin) {
+      headers.set("Origin", origin);
+    }
 
     let backendResponse;
 
