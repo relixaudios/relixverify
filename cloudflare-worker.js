@@ -1,4 +1,4 @@
-const DEFAULT_BACKEND_ORIGIN = "http://93.115.101.145:14254";
+const DEFAULT_BACKEND_ORIGIN = "http://93.115.101.145";
 const API_PATH = "/api/oauth/callback";
 const HEALTH_PATH = "/healthz";
 const DEFAULT_ALLOWED_ORIGINS = [
