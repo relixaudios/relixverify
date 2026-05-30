@@ -1,11 +1,10 @@
 window.RELIX_VERIFY_CONFIG = {
-  defaultApiTarget: "server",
-  apiUrl: "http://93.115.101.145:14254/api/oauth/callback",
-  callbackUrl: "http://93.115.101.145:14254/relixverify/verification.html",
+  defaultApiTarget: "proxy",
+  apiUrl: "https://relixverify.mynamesreyli.workers.dev/api/oauth/callback",
   apiTargets: {
-    server: {
-      label: "Server",
-      apiUrl: "http://93.115.101.145:14254/api/oauth/callback"
+    proxy: {
+      label: "Verification API",
+      apiUrl: "https://relixverify.mynamesreyli.workers.dev/api/oauth/callback"
     }
   },
   discordUrl: "https://discord.gg/s5qHTezSMU"

@@ -173,7 +173,6 @@
     const config = window.RELIX_VERIFY_CONFIG || {};
     const app = document.getElementById("app");
     const requiredApiPath = "/api/oauth/callback";
-    const defaultCallbackPath = "/relixverify/verification.html";
 
     function cleanUrl() {
       if (window.history && window.history.replaceState) {
@@ -227,38 +226,13 @@
       return Boolean(url && url.pathname === requiredApiPath);
     }
 
-    function resolveCallbackUrl(apiUrl) {
-      const configuredUrl = parseHttpUrl(config.callbackUrl);
-      if (configuredUrl) {
-        return configuredUrl;
-      }
-
-      const derivedUrl = parseHttpUrl(apiUrl);
-      if (!derivedUrl) {
-        return null;
-      }
-
-      derivedUrl.pathname = defaultCallbackPath;
-      derivedUrl.search = "";
-      derivedUrl.hash = "";
-      return derivedUrl;
-    }
-
-    function browserWillBlockFetch(apiUrl) {
+    function isFetchableApiUrl(apiUrl) {
       const url = parseHttpUrl(apiUrl);
-      return Boolean(url && window.location.protocol === "https:" && url.protocol === "http:");
-    }
-
-    function redirectToServerCallback(apiUrl, code, state) {
-      const callbackUrl = resolveCallbackUrl(apiUrl);
-      if (!callbackUrl || callbackUrl.origin === window.location.origin) {
+      if (!url || url.pathname !== requiredApiPath) {
         return false;
       }
 
-      callbackUrl.searchParams.set("code", code);
-      callbackUrl.searchParams.set("state", state);
-      window.location.replace(callbackUrl.href);
-      return true;
+      return !(window.location.protocol === "https:" && url.protocol === "http:");
     }
 
     function readableFetchError(endpoint, err) {
@@ -275,19 +249,35 @@
 
     function resolveApiEndpoints() {
       const targets = config.apiTargets || {};
-      const endpoint = targets.server || {};
-      const apiUrl = typeof endpoint === "string" ? endpoint : endpoint && endpoint.apiUrl;
-      const configuredApiUrl = isConfiguredApiUrl(apiUrl) ? apiUrl : config.apiUrl;
+      const orderedNames = [
+        config.defaultApiTarget,
+        ...Object.keys(targets)
+      ].filter(Boolean);
+      const endpoints = [];
+      const seenUrls = new Set();
 
-      if (!isConfiguredApiUrl(configuredApiUrl)) {
-        return [];
+      for (const name of orderedNames) {
+        const endpoint = targets[name] || {};
+        const apiUrl = typeof endpoint === "string" ? endpoint : endpoint && endpoint.apiUrl;
+        if (isFetchableApiUrl(apiUrl) && !seenUrls.has(apiUrl)) {
+          seenUrls.add(apiUrl);
+          endpoints.push({
+            name,
+            label: endpoint.label || name,
+            url: apiUrl
+          });
+        }
       }
 
-      return [{
-        name: "server",
-        label: endpoint.label || "Server",
-        url: configuredApiUrl
-      }];
+      if (isFetchableApiUrl(config.apiUrl) && !seenUrls.has(config.apiUrl)) {
+        endpoints.push({
+          name: "default",
+          label: "Verification API",
+          url: config.apiUrl
+        });
+      }
+
+      return endpoints;
     }
 
     function isRetryableVerificationFailure(error, response, payload) {
@@ -416,10 +406,6 @@
       let lastErrorMessage = "Verification endpoint is not reachable.";
 
       for (const endpoint of apiEndpoints) {
-        if (browserWillBlockFetch(endpoint.url) && redirectToServerCallback(endpoint.url, code, state)) {
-          return;
-        }
-
         try {
           const { response, payload } = await fetchVerification(endpoint, code, state);
 
@@ -438,10 +424,6 @@
           return;
         } catch (err) {
           lastErrorMessage = readableFetchError(endpoint, err);
-
-          if (redirectToServerCallback(endpoint.url, code, state)) {
-            return;
-          }
 
           if (isRetryableVerificationFailure(err)) {
             continue;
