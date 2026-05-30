@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
   <title>Relix Audios Verification</title>
   <style>
     :root {
@@ -171,8 +172,8 @@
   <script>
     const config = window.RELIX_VERIFY_CONFIG || {};
     const app = document.getElementById("app");
-    const requiredApiOrigin = "http://217.160.125.128:14254";
     const requiredApiPath = "/api/oauth/callback";
+    const defaultCallbackPath = "/relixverify/verification.html";
 
     function cleanUrl() {
       if (window.history && window.history.replaceState) {
@@ -208,13 +209,68 @@
       return fallback;
     }
 
-    function isConfiguredApiUrl(apiUrl) {
+    function parseHttpUrl(value) {
       try {
-        const url = new URL(apiUrl);
-        return url.origin === requiredApiOrigin && url.pathname === requiredApiPath;
+        const url = new URL(text(value, ""), window.location.href);
+        if (url.protocol === "https:" || url.protocol === "http:") {
+          return url;
+        }
       } catch (err) {
+        return null;
+      }
+
+      return null;
+    }
+
+    function isConfiguredApiUrl(apiUrl) {
+      const url = parseHttpUrl(apiUrl);
+      return Boolean(url && url.pathname === requiredApiPath);
+    }
+
+    function resolveCallbackUrl(apiUrl) {
+      const configuredUrl = parseHttpUrl(config.callbackUrl);
+      if (configuredUrl) {
+        return configuredUrl;
+      }
+
+      const derivedUrl = parseHttpUrl(apiUrl);
+      if (!derivedUrl) {
+        return null;
+      }
+
+      derivedUrl.pathname = defaultCallbackPath;
+      derivedUrl.search = "";
+      derivedUrl.hash = "";
+      return derivedUrl;
+    }
+
+    function browserWillBlockFetch(apiUrl) {
+      const url = parseHttpUrl(apiUrl);
+      return Boolean(url && window.location.protocol === "https:" && url.protocol === "http:");
+    }
+
+    function redirectToServerCallback(apiUrl, code, state) {
+      const callbackUrl = resolveCallbackUrl(apiUrl);
+      if (!callbackUrl || callbackUrl.origin === window.location.origin) {
         return false;
       }
+
+      callbackUrl.searchParams.set("code", code);
+      callbackUrl.searchParams.set("state", state);
+      window.location.replace(callbackUrl.href);
+      return true;
+    }
+
+    function readableFetchError(endpoint, err) {
+      if (err && err.name === "AbortError") {
+        return `${endpoint.label} timed out.`;
+      }
+
+      if (err && err.message && err.message !== "Failed to fetch") {
+        return err.message;
+      }
+
+      return `${endpoint.label} is not reachable.`;
     }
 
     function resolveApiEndpoints() {
@@ -360,6 +416,10 @@
       let lastErrorMessage = "Verification endpoint is not reachable.";
 
       for (const endpoint of apiEndpoints) {
+        if (browserWillBlockFetch(endpoint.url) && redirectToServerCallback(endpoint.url, code, state)) {
+          return;
+        }
+
         try {
           const { response, payload } = await fetchVerification(endpoint, code, state);
 
@@ -377,9 +437,11 @@
           renderError(lastErrorMessage);
           return;
         } catch (err) {
-          lastErrorMessage = err.name === "AbortError"
-            ? `${endpoint.label} timed out.`
-            : text(err.message, `${endpoint.label} is not reachable.`);
+          lastErrorMessage = readableFetchError(endpoint, err);
+
+          if (redirectToServerCallback(endpoint.url, code, state)) {
+            return;
+          }
 
           if (isRetryableVerificationFailure(err)) {
             continue;
